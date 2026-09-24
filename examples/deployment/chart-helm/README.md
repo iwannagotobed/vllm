@@ -31,3 +31,35 @@ helm plugin install https://github.com/helm-unittest/helm-unittest
 # Run tests
 helm unittest .
 ```
+
+## Configuring Slow Model Startup
+
+The default startup probe checks `/health` every 10 seconds and allows 180
+failures, giving model initialization up to 30 minutes. The deployment progress
+deadline defaults to 35 minutes so that the startup budget can be exhausted
+before Kubernetes reports `ProgressDeadlineExceeded`.
+
+Disable the startup probe when another mechanism manages startup:
+
+```yaml
+startupProbe: null
+```
+
+The probe object is rendered directly and supports standard Kubernetes probe
+handlers. Because Helm merges maps with the chart defaults, clear `httpGet`
+when replacing the default handler with `exec` or `tcpSocket`:
+
+```yaml
+startupProbe:
+  httpGet: null
+  exec:
+    command:
+      - sh
+      - -c
+      - test -f /tmp/model-ready
+  periodSeconds: 5
+  failureThreshold: 360
+```
+
+When changing the startup budget, also set `progressDeadlineSeconds` longer
+than the expected startup window.

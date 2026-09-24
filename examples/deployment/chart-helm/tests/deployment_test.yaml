@@ -2,6 +2,102 @@ suite: test deployment
 templates:
   - deployment.yaml
 tests:
+  - it: should configure startup protection by default
+    asserts:
+      - equal:
+          path: spec.progressDeadlineSeconds
+          value: 2100
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            failureThreshold: 180
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+
+  - it: should omit a disabled startup probe without changing other probes
+    set:
+      startupProbe: null
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            failureThreshold: 3
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+
+  - it: should render a custom HTTP startup probe
+    set:
+      startupProbe:
+        httpGet:
+          path: /startup
+          port: 9000
+          scheme: HTTPS
+        initialDelaySeconds: 7
+        periodSeconds: 11
+        timeoutSeconds: 3
+        failureThreshold: 12
+        successThreshold: 1
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            failureThreshold: 12
+            httpGet:
+              path: /startup
+              port: 9000
+              scheme: HTTPS
+            initialDelaySeconds: 7
+            periodSeconds: 11
+            successThreshold: 1
+            timeoutSeconds: 3
+
+  - it: should render a custom exec startup probe
+    set:
+      startupProbe:
+        httpGet: null
+        exec:
+          command:
+            - sh
+            - -c
+            - test -f /tmp/model-ready
+        periodSeconds: 5
+        failureThreshold: 360
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            exec:
+              command:
+                - sh
+                - -c
+                - test -f /tmp/model-ready
+            failureThreshold: 360
+            periodSeconds: 5
+
+  - it: should use a custom deployment progress deadline
+    set:
+      progressDeadlineSeconds: 3600
+    asserts:
+      - equal:
+          path: spec.progressDeadlineSeconds
+          value: 3600
+
   - it: should use configured labels for the deployment selector and pods
     set:
       labels:

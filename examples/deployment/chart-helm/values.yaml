@@ -25,6 +25,9 @@ replicaCount: 1
 # -- Deployment strategy configuration
 deploymentStrategy: {}
 
+# -- Maximum time in seconds for a deployment to make progress
+progressDeadlineSeconds: 2100
+
 # -- Resource configuration
 resources:
   requests:
@@ -138,6 +141,19 @@ extraInit:
 
 # -- Additional containers configuration
 extraContainers: []
+
+# -- Startup probe configuration. Set to null to disable.
+startupProbe:
+  # -- How often (in seconds) to perform the startup probe
+  periodSeconds: 10
+  # -- Number of times after which if a probe fails in a row, Kubernetes considers that the container failed to start
+  failureThreshold: 180
+  # -- Configuration of the Kubelet HTTP request on the server
+  httpGet:
+    # -- Path to access on the HTTP server
+    path: /health
+    # -- Name or number of the port to access on the container, on which the server is listening
+    port: 8000
 
 # -- Readiness probe configuration
 readinessProbe:

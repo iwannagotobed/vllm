@@ -45,6 +45,10 @@
         "deploymentStrategy": {
             "type": "object"
         },
+        "progressDeadlineSeconds": {
+            "type": "integer",
+            "minimum": 1
+        },
         "resources": {
             "type": "object",
             "properties": {
@@ -222,6 +226,12 @@
         "extraContainers": {
             "type": "array"
         },
+        "startupProbe": {
+            "type": [
+                "object",
+                "null"
+            ]
+        },
         "readinessProbe": {
             "type": "object",
             "properties": {
@@ -323,6 +333,7 @@
         "labels",
         "livenessProbe",
         "maxUnavailablePodDisruptionBudget",
+        "progressDeadlineSeconds",
         "readinessProbe",
         "replicaCount",
         "resources",

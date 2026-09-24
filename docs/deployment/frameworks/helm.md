@@ -87,6 +87,7 @@ The following table describes configurable parameters of the chart in `values.ya
 | livenessProbe.initialDelaySeconds | int | 15 | Number of seconds after the container has started before liveness probe is initiated |
 | livenessProbe.periodSeconds | int | 10 | How often (in seconds) to perform the liveness probe |
 | maxUnavailablePodDisruptionBudget | string | "" | Disruption Budget Configuration |
+| progressDeadlineSeconds | int | 2100 | Maximum time in seconds for a deployment to make progress |
 | readinessProbe | object | {"failureThreshold":3,"httpGet":{"path":"/health","port":8000},"initialDelaySeconds":5,"periodSeconds":5} | Readiness probe configuration |
 | readinessProbe.failureThreshold | int | 3 | Number of times after which if a probe fails in a row, Kubernetes considers that the overall check has failed: the container is not ready |
 | readinessProbe.httpGet | object | {"path":"/health","port":8000} | Configuration of the kubelet http request on the server |
@@ -105,7 +106,50 @@ The following table describes configurable parameters of the chart in `values.ya
 | secrets | object | {} | Secrets configuration |
 | serviceName | string | "" | Service name |
 | servicePort | int | 80 | Service port |
+| startupProbe | object | {"failureThreshold":180,"httpGet":{"path":"/health","port":8000},"periodSeconds":10} | Startup probe configuration. Set to null to disable. |
+| startupProbe.failureThreshold | int | 180 | Number of times after which if a probe fails in a row, Kubernetes considers that the container failed to start |
+| startupProbe.httpGet | object | {"path":"/health","port":8000} | Configuration of the kubelet HTTP request on the server |
+| startupProbe.httpGet.path | string | "/health" | Path to access on the HTTP server |
+| startupProbe.httpGet.port | int | 8000 | Name or number of the port to access on the container, on which the server is listening |
+| startupProbe.periodSeconds | int | 10 | How often (in seconds) to perform the startup probe |
 | labels.environment | string | test | Environment name |
+
+## Configuring slow model startup
+
+The default startup probe checks `/health` every 10 seconds and allows 180
+failures, giving vLLM up to 30 minutes to initialize. Until this probe succeeds,
+Kubernetes does not execute the readiness or liveness probes.
+
+The default `progressDeadlineSeconds` is 2100 seconds, five minutes longer than
+the startup budget. Kubernetes reports `ProgressDeadlineExceeded` when a
+deployment stops progressing beyond this deadline; it does not automatically
+terminate its Pods or roll it back.
+
+Disable the startup probe by setting it to `null`:
+
+```yaml
+startupProbe: null
+```
+
+The startup probe object is rendered directly, so it can use any standard
+Kubernetes probe handler. Because Helm merges maps with the chart defaults,
+clear `httpGet` when replacing the default HTTP handler. For example:
+
+```yaml
+startupProbe:
+  httpGet: null
+  exec:
+    command:
+      - sh
+      - -c
+      - test -f /tmp/model-ready
+  periodSeconds: 5
+  failureThreshold: 360
+```
+
+When changing `periodSeconds` or `failureThreshold`, also configure
+`progressDeadlineSeconds` so that the deployment deadline remains longer than
+the expected startup window.
 
 ## Configuration Examples
 
